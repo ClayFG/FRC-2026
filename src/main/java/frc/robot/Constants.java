@@ -78,7 +78,13 @@ public final class Constants {
 
   public static final class OIConstants {
     public static final int kDriverControllerPort = 0;
-    public static final double kDriveDeadband = 0.05;
+    
+    // Stick deadband - ignores joystick input within this range from center
+    public static final double kStickDeadband = 0.05;
+
+    // Position deadband for positioner - stops sending commands when within this range of target (radians)
+    // Set to 0.0 to disable position deadzone (once PID is tuned)
+    public static final double kPositionerPositionDeadband = Math.toRadians(5.0); // ±5 degrees
   }
 
   public static final class AutoConstants {
@@ -98,5 +104,45 @@ public final class Constants {
 
   public static final class NeoMotorConstants {
     public static final double kFreeSpeedRpm = 5676;
+  }
+
+  public static final class PositionerConstants {
+    // CAN IDs for positioner motors
+    public static final int kPitchMotorCanId = 30;
+    public static final int kYawMotorCanId = 31;
+
+    // Soft limit values in radians (adjust these based on your mechanical limits)
+    // Pitch: 0° to 90° (down to up)
+    public static final double kPitchForwardSoftLimit = Math.PI / 2; // 90 degrees
+    public static final double kPitchReverseSoftLimit = 0.0; // 0 degrees
+
+    // Yaw: -45° to +45° (left to right, 0° = forward)
+    public static final double kYawForwardSoftLimit = Math.PI / 4; // +45 degrees
+    public static final double kYawReverseSoftLimit = 7 * Math.PI / 4; // -45 degrees (equivalent to +315° in 0-360° range)
+  }
+
+  public static final class VisionConstants {
+    // PhotonVision camera name
+    public static final String kCameraName = "Arducam";
+
+    // Camera resolution (Arducam OV2311 - monochrome)
+    public static final int kCameraResolutionWidth = 1280;
+    public static final int kCameraResolutionHeight = 720;
+
+    // Camera center (pixel coordinates)
+    public static final double kCameraCenterX = kCameraResolutionWidth / 2.0; // 640
+    public static final double kCameraCenterY = kCameraResolutionHeight / 2.0; // 360
+
+    // AprilTag tracking P gains for frame-based centering
+    // These control how aggressively we move to center the tag
+    public static final double kYawTrackingP = 0.02; // rad/s per pixel offset in X
+    public static final double kPitchTrackingP = 0.02; // rad/s per pixel offset in Y
+
+    // Dead zone for tag tracking (pixels) - ignore small movements
+    public static final double kTrackingCenterDeadzone = 15.0; // pixels
+
+    // Maximum tracking speeds (rad/s)
+    public static final double kMaxYawTrackingSpeed = Math.PI / 4; // 45°/s
+    public static final double kMaxPitchTrackingSpeed = Math.PI / 6; // 30°/s
   }
 }

@@ -6,6 +6,7 @@ import com.revrobotics.spark.config.AbsoluteEncoderConfig;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 
 import frc.robot.Constants.ModuleConstants;
+import frc.robot.Constants.PositionerConstants;
 
 public final class Configs {
     public static final class MAXSwerveModule {
@@ -57,6 +58,62 @@ public final class Configs {
                     // longer route.
                     .positionWrappingEnabled(true)
                     .positionWrappingInputRange(0, turningFactor);
+        }
+    }
+
+    public static final class TwoAxisPositioner {
+        public static final SparkMaxConfig pitchConfig = new SparkMaxConfig();
+        public static final SparkMaxConfig yawConfig = new SparkMaxConfig();
+
+        static {
+            // Configure pitch motor (X-axis)
+            pitchConfig
+                    .idleMode(IdleMode.kBrake)
+                    .smartCurrentLimit(4);
+
+            pitchConfig.absoluteEncoder
+                    .positionConversionFactor(2 * Math.PI) // radians
+                    .velocityConversionFactor(2 * Math.PI / 60.0) // radians per second
+                    .apply(AbsoluteEncoderConfig.Presets.REV_ThroughBoreEncoderV2);
+
+            pitchConfig.closedLoop
+                    .feedbackSensor(FeedbackSensor.kAbsoluteEncoder)
+                    .pid(0.6, 0.00, 0.6) // Conservative gains for light system
+                    .outputRange(-1, 1)
+                    .positionWrappingEnabled(true)
+                    .positionWrappingInputRange(0, 2 * Math.PI);
+
+            // Add soft limits for pitch (adjust these values based on your mechanical limits)
+            pitchConfig.softLimit
+                    .forwardSoftLimit(PositionerConstants.kPitchForwardSoftLimit)
+                    .reverseSoftLimit(PositionerConstants.kPitchReverseSoftLimit)
+                    .forwardSoftLimitEnabled(true)
+                    .reverseSoftLimitEnabled(true);
+
+            // Configure yaw motor (Y-axis)
+            yawConfig
+                    .idleMode(IdleMode.kBrake)
+                    .smartCurrentLimit(4)
+                    .inverted(true);
+
+            yawConfig.absoluteEncoder
+                    .positionConversionFactor(2 * Math.PI) // radians
+                    .velocityConversionFactor(2 * Math.PI / 60.0) // radians per second
+                    .apply(AbsoluteEncoderConfig.Presets.REV_ThroughBoreEncoderV2);
+
+            yawConfig.closedLoop
+                    .feedbackSensor(FeedbackSensor.kAbsoluteEncoder)
+                    .pid(0.5, 0.0, 0.6) // Much lower P, zero I, higher D for damping
+                    .outputRange(-1, 1)
+                    .positionWrappingEnabled(true)
+                    .positionWrappingInputRange(0, 2 * Math.PI);
+
+            // Add soft limits for yaw (adjust these values based on your mechanical limits)
+            yawConfig.softLimit
+                    .forwardSoftLimit(PositionerConstants.kYawForwardSoftLimit)
+                    .reverseSoftLimit(PositionerConstants.kYawReverseSoftLimit)
+                    .forwardSoftLimitEnabled(true)
+                    .reverseSoftLimitEnabled(true);
         }
     }
 }
