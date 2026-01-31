@@ -93,7 +93,7 @@ public final class Configs {
             // Configure yaw motor (Y-axis)
             yawConfig
                     .idleMode(IdleMode.kBrake)
-                    .smartCurrentLimit(4)
+                    .smartCurrentLimit(20)
                     .inverted(true);
 
             yawConfig.absoluteEncoder

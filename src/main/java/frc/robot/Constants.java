@@ -117,26 +117,29 @@ public final class Constants {
     public static final double kPitchReverseSoftLimit = 0.0; // 0 degrees
 
     // Yaw: -45° to +45° (left to right, 0° = forward)
-    public static final double kYawForwardSoftLimit = Math.PI / 4; // +45 degrees
-    public static final double kYawReverseSoftLimit = 7 * Math.PI / 4; // -45 degrees (equivalent to +315° in 0-360° range)
+    // Yaw limits set to 0..90° (0..π/2) so the allowed zone does not cross
+    // the 0/2π wrap. This avoids wrapping issues where the controller could
+    // choose the long path around the encoder domain.
+    public static final double kYawForwardSoftLimit = Math.PI / 2; // 90 degrees
+    public static final double kYawReverseSoftLimit = 0.0; // 0 degrees
   }
 
   public static final class VisionConstants {
     // PhotonVision camera name
-    public static final String kCameraName = "Arducam";
+    public static final String kCameraName = "Arducam_OV9782_USB_Camera";
 
     // Camera resolution (Arducam OV2311 - monochrome)
-    public static final int kCameraResolutionWidth = 1280;
-    public static final int kCameraResolutionHeight = 720;
+    public static final int kCameraResolutionWidth = 640;
+    public static final int kCameraResolutionHeight = 480;
 
     // Camera center (pixel coordinates)
-    public static final double kCameraCenterX = kCameraResolutionWidth / 2.0; // 640
-    public static final double kCameraCenterY = kCameraResolutionHeight / 2.0; // 360
+    public static final double kCameraCenterX = kCameraResolutionWidth / 2.0; // 320
+    public static final double kCameraCenterY = kCameraResolutionHeight / 2.0; // 240
 
     // AprilTag tracking P gains for frame-based centering
     // These control how aggressively we move to center the tag
-    public static final double kYawTrackingP = 0.02; // rad/s per pixel offset in X
-    public static final double kPitchTrackingP = 0.02; // rad/s per pixel offset in Y
+    public static final double kYawTrackingP = 0.2; // rad/s per pixel offset in X
+    public static final double kPitchTrackingP = 0.2; // rad/s per pixel offset in Y
 
     // Dead zone for tag tracking (pixels) - ignore small movements
     public static final double kTrackingCenterDeadzone = 15.0; // pixels

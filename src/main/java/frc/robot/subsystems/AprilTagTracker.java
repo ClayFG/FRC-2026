@@ -36,7 +36,7 @@ public class AprilTagTracker extends SubsystemBase {
   private double m_targetX = 0.0; // Pixel X of tag center
   private double m_targetY = 0.0; // Pixel Y of tag center
   private double m_targetArea = 0.0; // Percentage of frame
-  private int m_targetId = -1;
+  private int m_targetId = 14;
 
   // Throttle NetworkTable reads
   private int m_updateCounter = 0;
@@ -127,76 +127,101 @@ public class AprilTagTracker extends SubsystemBase {
   }
 
   /**
-   * Calculates proportional pitch command to center tag in vertical frame.
+   * Calculates the yaw angle offset needed to center the tag.
+   * Based on tag position in frame and camera FOV.
    * 
-   * @return Desired pitch angular velocity (rad/s), bounded by max speed
+   * @return Desired yaw angle offset from camera boresight (radians)
    */
-  public double calculatePitchCommand() {
+  public double getYawAngleOffset() {
     if (!m_hasTarget) {
       return 0.0;
     }
 
-    // Vertical offset from center (pixels)
-    double offsetY = m_targetY; // Already centered around 0
+    // Camera FOV in radians
+    double fovHorizontalRadians = Math.toRadians(60.48);
+    
+    // Convert pixel offset to angle offset
+    // pixels go from -320 to +320 (for 640 width)
+    // angles go from -fov/2 to +fov/2
+    double pixelRange = VisionConstants.kCameraResolutionWidth / 2.0;
+    double angleRange = fovHorizontalRadians / 2.0;
+    
+    double yawOffset = (m_targetX / pixelRange) * angleRange;
+    
+    return MathUtil.clamp(yawOffset, -angleRange, angleRange);
+  }
 
-    // Apply dead zone
-    if (Math.abs(offsetY) < VisionConstants.kTrackingCenterDeadzone) {
+  /**
+   * Calculates the pitch angle offset needed to center the tag.
+   * Based on tag position in frame and camera FOV.
+   * 
+   * @return Desired pitch angle offset from camera boresight (radians)
+   */
+  public double getPitchAngleOffset() {
+    if (!m_hasTarget) {
       return 0.0;
     }
 
-    // P-based command: offset * gain
-    // Note: Positive Y is down in image coords, but we want positive pitch up
-    double pitchCommand = -offsetY * VisionConstants.kPitchTrackingP;
-
-    // Clamp to max speed
-    return MathUtil.clamp(pitchCommand,
-        -VisionConstants.kMaxPitchTrackingSpeed,
-        VisionConstants.kMaxPitchTrackingSpeed);
+    // Estimate vertical FOV (typically 4:3 aspect, so ~45° for 60° horizontal)
+    double fovVerticalRadians = Math.toRadians(45.0);
+    
+    // Convert pixel offset to angle offset
+    // pixels go from -240 to +240 (for 480 height)
+    // angles go from -fov/2 to +fov/2
+    double pixelRange = VisionConstants.kCameraResolutionHeight / 2.0;
+    double angleRange = fovVerticalRadians / 2.0;
+    
+    double pitchOffset = (m_targetY / pixelRange) * angleRange;
+    
+    return MathUtil.clamp(pitchOffset, -angleRange, angleRange);
   }
 
   @Override
   public void periodic() {
     // Throttle NetworkTable reads
     m_updateCounter++;
-    if (m_updateCounter < UPDATE_FREQUENCY) {
-      return;
-    }
-    m_updateCounter = 0;
+    boolean shouldUpdate = (m_updateCounter >= UPDATE_FREQUENCY);
+    if (shouldUpdate) {
+      m_updateCounter = 0;
 
-    // Read target detection status
-    m_hasTarget = m_hasTargetEntry.get();
+      // Read target detection status
+      m_hasTarget = m_hasTargetEntry.get();
 
-    if (m_hasTarget) {
-      // Read tag position: PhotonVision returns offsets in degrees from camera center
-      double txDegrees = m_txEntry.get(); // Yaw offset
-      double tyDegrees = m_tyEntry.get(); // Pitch offset
+      if (m_hasTarget) {
+        // Read tag position: PhotonVision returns offsets in degrees from camera center
+        double txDegrees = m_txEntry.get(); // Yaw offset
+        double tyDegrees = m_tyEntry.get(); // Pitch offset
 
-      // Convert degrees to approximate pixel offset using camera FOV
-      // This is a simplification - ideally we'd use actual camera calibration
-      // Arducam OV2311 ~48° horizontal FOV
-      double fovHorizontal = Math.toRadians(48.0); // degrees
-      double pixelsPerRadian = VisionConstants.kCameraResolutionWidth / fovHorizontal;
+        // Convert degrees to approximate pixel offset using camera FOV
+        // Arducam OV2311 ~60° horizontal FOV
+        double fovHorizontalDegrees = 60.48; // degrees
+        double fovHorizontalRadians = Math.toRadians(fovHorizontalDegrees);
+        double pixelsPerRadian = VisionConstants.kCameraResolutionWidth / fovHorizontalRadians;
 
-      m_targetX = txDegrees * pixelsPerRadian; // Horizontal pixel offset
-      m_targetY = tyDegrees * pixelsPerRadian; // Vertical pixel offset
+        // Convert degree offsets to radians, then to pixels
+        m_targetX = Math.toRadians(txDegrees) * pixelsPerRadian; // Horizontal pixel offset
+        m_targetY = Math.toRadians(tyDegrees) * pixelsPerRadian; // Vertical pixel offset
 
-      m_targetArea = m_targetAreaEntry.get();
-      m_targetId = (int) m_targetIdEntry.get();
+        m_targetArea = m_targetAreaEntry.get();
+        m_targetId = (int) m_targetIdEntry.get();
 
-      // Intermittent dashboard logging
-      m_dashboardCounter++;
-      if (m_dashboardCounter >= DASHBOARD_LOG_FREQUENCY) {
-        m_dashboardCounter = 0;
-        SmartDashboard.putNumber("Vision/Target X (px)", m_targetX);
-        SmartDashboard.putNumber("Vision/Target Y (px)", m_targetY);
-        SmartDashboard.putNumber("Vision/Target ID", m_targetId);
-        SmartDashboard.putNumber("Vision/Target Area (%)", m_targetArea);
+        // Intermittent dashboard logging
+        m_dashboardCounter++;
+        if (m_dashboardCounter >= DASHBOARD_LOG_FREQUENCY) {
+          m_dashboardCounter = 0;
+          SmartDashboard.putNumber("Vision/Target X (px)", m_targetX);
+          SmartDashboard.putNumber("Vision/Target Y (px)", m_targetY);
+          SmartDashboard.putNumber("Vision/Target ID", m_targetId);
+          SmartDashboard.putNumber("Vision/Target Area (%)", m_targetArea);
+        }
+      } else {
+        m_targetX = 0.0;
+        m_targetY = 0.0;
+        m_targetArea = 0.0;
+        m_targetId = -1;
       }
-    } else {
-      m_targetX = 0.0;
-      m_targetY = 0.0;
-      m_targetArea = 0.0;
-      m_targetId = -1;
     }
+    // Always publish dashboard indicator every cycle for responsiveness
+    SmartDashboard.putBoolean("Vision/Tag14Seen", m_hasTarget && m_targetId == 14);
   }
 }

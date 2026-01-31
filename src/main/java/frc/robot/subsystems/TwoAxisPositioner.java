@@ -121,8 +121,13 @@ public class TwoAxisPositioner extends SubsystemBase {
    * Stops both motors.
    */
   public void stop() {
-    m_pitchSpark.set(0);
-    m_yawSpark.set(0);
+    // Hold current positions using the closed-loop controller instead of
+    // setting motors to open-loop zero. This prevents drifting and large
+    // transients when commands re-enable closed-loop control.
+    double currentPitch = getPitchPosition();
+    double currentYaw = getYawPosition();
+    m_pitchClosedLoopController.setSetpoint(currentPitch, ControlType.kPosition);
+    m_yawClosedLoopController.setSetpoint(currentYaw, ControlType.kPosition);
   }
 
   @Override

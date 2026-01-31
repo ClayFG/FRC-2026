@@ -6,6 +6,7 @@ package frc.robot;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.OIConstants;
 import frc.robot.subsystems.AprilTagTracker;
 import frc.robot.subsystems.TwoAxisPositioner;
@@ -52,33 +53,52 @@ public class RobotContainer {
 
             if (trackingMode && m_visionTracker.hasTarget()) {
                 // === APRILTAG TRACKING MODE (B button) ===
-                // Use P-based control to center AprilTag in frame
-                double yawCommand = m_visionTracker.calculateYawCommand();
-                double pitchCommand = m_visionTracker.calculatePitchCommand();
+                // Calculate angle offsets based on tag position in frame
+                double yawAngleOffset = m_visionTracker.getYawAngleOffset();
+                double pitchAngleOffset = m_visionTracker.getPitchAngleOffset();
 
-                // Convert from angular velocity (rad/s) to position setpoint
-                // This is a simplified approach - we add velocity command to current position
+                // Get current positions
                 double currentYaw = m_positioner.getYawPosition();
                 double currentPitch = m_positioner.getPitchPosition();
                 
-                // Integrate: new position = current + (velocity * dt)
-                // At 50Hz, dt = 0.02 seconds
-                double dt = 0.02;
-                double targetYaw = currentYaw + (yawCommand * dt);
-                double targetPitch = currentPitch + (pitchCommand * dt);
+                // Target = current position + angle offset
+                double targetYaw = currentYaw + yawAngleOffset;
+                double targetPitch = currentPitch + pitchAngleOffset;
 
-                m_positioner.setYawPosition(targetYaw);
-                m_positioner.setPitchPosition(targetPitch);
+                // Debug output
+                SmartDashboard.putNumber("Tracking/Yaw Offset (rad)", yawAngleOffset);
+                SmartDashboard.putNumber("Tracking/Pitch Offset (rad)", pitchAngleOffset);
+                SmartDashboard.putNumber("Tracking/Target Yaw (rad)", targetYaw);
+                SmartDashboard.putNumber("Tracking/Target Pitch (rad)", targetPitch);
+                SmartDashboard.putNumber("Tracking/Current Yaw (rad)", currentYaw);
+                SmartDashboard.putNumber("Tracking/Current Pitch (rad)", currentPitch);
+
+        // Clamp integrated targets to configured soft limits to avoid
+        // requesting positions outside the allowed range.
+        targetYaw = MathUtil.clamp(targetYaw,
+          Constants.PositionerConstants.kYawReverseSoftLimit,
+          Constants.PositionerConstants.kYawForwardSoftLimit);
+        targetPitch = MathUtil.clamp(targetPitch,
+          Constants.PositionerConstants.kPitchReverseSoftLimit,
+          Constants.PositionerConstants.kPitchForwardSoftLimit);
+
+        m_positioner.setYawPosition(targetYaw);
+        m_positioner.setPitchPosition(targetPitch);
 
             } else if (pitchMode) {
                 // A button: pitch control
                 double targetPitch = Math.PI * (stickY + 1.0) / 4.0;
                 m_positioner.setPitchPosition(targetPitch);
 
-            } else if (yawMode) {
-                // X button: yaw control
-                double targetYaw = Math.PI * stickX / 4.0;
-                m_positioner.setYawPosition(targetYaw);
+      } else if (yawMode) {
+        // X button: yaw control
+        // Remap stickX (-1..+1) to yaw range 0..90° (0..π/2)
+        double targetYaw = Math.PI * (stickX + 1.0) / 4.0; // (stickX+1)*(π/4)
+        // Clamp to configured soft limits for safety
+        targetYaw = MathUtil.clamp(targetYaw,
+          Constants.PositionerConstants.kYawReverseSoftLimit,
+          Constants.PositionerConstants.kYawForwardSoftLimit);
+        m_positioner.setYawPosition(targetYaw);
 
             } else {
                 // No buttons held - stop motors
