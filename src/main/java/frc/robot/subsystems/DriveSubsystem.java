@@ -16,6 +16,7 @@ import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import frc.robot.Constants.DriveConstants;
+import frc.robot.Constants.VisionConstants;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 public class DriveSubsystem extends SubsystemBase {
@@ -180,5 +181,43 @@ public class DriveSubsystem extends SubsystemBase {
    */
   public double getTurnRate() {
     return m_gyro.getRate() * (DriveConstants.kGyroReversed ? -1.0 : 1.0);
+  }
+
+  /**
+   * Adds a vision measurement to update the odometry estimate.
+   * Blends the vision pose with the current odometry based on confidence.
+   *
+   * @param visionPose      The pose estimated by vision
+   * @param confidenceScore Confidence score (0.0 to 1.0)
+   */
+  public void addVisionMeasurement(Pose2d visionPose, double confidenceScore) {
+    // Blend factor: how much to trust the vision measurement vs wheel odometry
+    double blendFactor = confidenceScore * VisionConstants.kVisionOdometryBlendFactor;
+
+    // Get current odometry pose
+    Pose2d currentPose = m_odometry.getPoseMeters();
+
+    // Interpolate between current pose and vision pose
+    double blendedX = currentPose.getX() * (1.0 - blendFactor) + visionPose.getX() * blendFactor;
+    double blendedY = currentPose.getY() * (1.0 - blendFactor) + visionPose.getY() * blendFactor;
+
+    // For rotation, use linear interpolation of angle in radians
+    double currentAngleDeg = currentPose.getRotation().getDegrees();
+    double visionAngleDeg = visionPose.getRotation().getDegrees();
+
+    // Handle angle wrapping
+    double angleDiff = visionAngleDeg - currentAngleDeg;
+    if (angleDiff > 180) {
+      angleDiff -= 360;
+    } else if (angleDiff < -180) {
+      angleDiff += 360;
+    }
+
+    double blendedAngleDeg = currentAngleDeg + (angleDiff * blendFactor);
+
+    // Create blended pose and reset odometry
+    Pose2d blendedPose = new Pose2d(blendedX, blendedY, Rotation2d.fromDegrees(blendedAngleDeg));
+
+    resetOdometry(blendedPose);
   }
 }

@@ -100,4 +100,56 @@ public final class Constants {
   public static final class NeoMotorConstants {
     public static final double kFreeSpeedRpm = 5676;
   }
+
+  public static final class VisionConstants {
+    // PhotonVision camera name
+    public static final String kCameraFrontLeft = "FrontLeft (1)";
+
+    // Camera position relative to robot center (meters and radians)
+    // This is the Transform3d from robot center to camera lens
+    // X = forward/back (positive forward), Y = left/right (positive right), Z = up/down (positive up)
+    // For a front-left camera positioned at front-left corner:
+    public static final double kCameraX = DriveConstants.kWheelBase / 2.0;      // Forward, at front of robot
+    public static final double kCameraY = DriveConstants.kTrackWidth / 2.0;     // Right side (positive is right)
+    public static final double kCameraZ = 0.3;                                   // Height above ground (adjust as needed)
+    public static final double kCameraRollDegrees = 0.0;                        // Roll angle
+    public static final double kCameraPitchDegrees = 0.0;                       // Pitch angle (adjust if tilted)
+    public static final double kCameraYawDegrees = 0.0;                         // Yaw angle (adjust if rotated)
+
+    // Camera resolution (Arducam OV9782 - USB Camera)
+    public static final int kCameraResolutionWidth = 640;
+    public static final int kCameraResolutionHeight = 480;
+
+    // Camera center (pixel coordinates)
+    public static final double kCameraCenterX = kCameraResolutionWidth / 2.0; // 320
+    public static final double kCameraCenterY = kCameraResolutionHeight / 2.0; // 240
+
+    // Distance calibration: distance = kDistanceCalibration / sqrt(targetArea%)
+    // This constant needs to be calibrated by measuring distance vs observed area
+    // Start with an estimate and adjust based on real measurements
+    public static final double kDistanceCalibration = 0.5; // Adjust this value through testing
+
+    // Vision odometry: blend factor for vision pose updates (0.0 = trust wheels only, 1.0 = trust vision only)
+    public static final double kVisionOdometryBlendFactor = 0.5; // 50% trust vision updates
+
+    // AprilTag tracking P gains for frame-based centering
+    public static final double kYawTrackingP = 0.2; // rad/s per pixel offset in X
+    public static final double kPitchTrackingP = 0.2; // rad/s per pixel offset in Y
+
+    // Dead zone for tag tracking (pixels) - ignore small movements
+    public static final double kTrackingCenterDeadzone = 15.0; // pixels
+
+    // Maximum tracking speeds (rad/s)
+    public static final double kMaxYawTrackingSpeed = Math.PI / 4; // 45°/s
+    public static final double kMaxPitchTrackingSpeed = Math.PI / 6; // 30°/s
+
+    // Search routine: delay before starting search after target lost (seconds)
+    public static final double kSearchStartDelaySeconds = 1.0; // 1 second delay
+
+    // Confidence threshold for vision pose estimates
+    public static final double kMinAprilTagConfidence = 0.5;
+
+    // Maximum distance to trust a vision pose estimate (meters)
+    public static final double kMaxVisionPoseDistance = 5.0;
+  }
 }
